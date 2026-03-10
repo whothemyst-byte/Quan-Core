@@ -1,0 +1,18 @@
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.134.74.196:3000
+- Environments: .env.local, .env
+
+✓ Starting...
+✓ Ready in 6.3s
+ GET /swarm/run_f9a94053f4074e7da52c4f8a1d7f2325 200 in 7.0s (compile: 4.7s, proxy.ts: 1237ms, render: 1063ms)
+ GET /api/swarm/run_f9a94053f4074e7da52c4f8a1d7f2325/status 200 in 1206ms
+ GET /dashboard 200 in 828ms (compile: 116ms, proxy.ts: 365ms, render: 348ms)
+ GET /api/dashboard 200 in 1288ms (compile: 105ms, render: 1184ms)
+ GET /swarm/run_0e82e23b8df64842902feb955d53a292 200 in 391ms (compile: 41ms, proxy.ts: 166ms, render: 184ms)
+ GET /swarm/run_0e82e23b8df64842902feb955d53a292 200 in 421ms (compile: 78ms, proxy.ts: 189ms, render: 154ms)
+ GET /api/swarm/run_0e82e23b8df64842902feb955d53a292/status 200 in 951ms (compile: 45ms, render: 906ms)
+ GET /api/swarm/run_0e82e23b8df64842902feb955d53a292/status 200 in 1093ms (compile: 27ms, render: 1066ms)
+ POST /api/swarm/run 200 in 79s (compile: 472ms, render: 79s)
+ GET /dashboard 404 in 3.2s (compile: 656ms, proxy.ts: 386ms, render: 2.1s)
+[?25h

@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String        @id @default(cuid())
+  email            String        @unique
+  supabaseId       String        @unique
+  stripeCustomerId String?       @unique
+  subscription     Subscription?
+  agents           Agent[]
+  swarmRuns        SwarmRun[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id])
+  stripeSubscriptionId String?            @unique
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+}
+
+model Agent {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  name         String
+  role         AgentRole
+  description  String
+  systemPrompt String       @db.Text
+  tools        Json
+  isBuiltIn    Boolean      @default(false)
+  isActive     Boolean      @default(true)
+  avatarColor  String       @default("#6366f1")
+  avatarIcon   String       @default("bot")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  swarmAgents  SwarmAgent[]
+}
+
+enum AgentRole {
+  CEO
+  MANAGER
+  CODER
+  RESEARCHER
+  ANALYST
+  WRITER
+  DESIGNER
+  TESTER
+  CUSTOM
+}
+
+model SwarmRun {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  task        String         @db.Text
+  status      SwarmStatus    @default(PENDING)
+  result      String?        @db.Text
+  totalTokens Int            @default(0)
+  modelUsed   String
+  agents      SwarmAgent[]
+  messages    SwarmMessage[]
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+enum SwarmStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  STOPPED
+}
+
+model SwarmAgent {
+  id          String    @id @default(cuid())
+  swarmRunId  String
+  swarmRun    SwarmRun  @relation(fields: [swarmRunId], references: [id])
+  agentId     String
+  agent       Agent     @relation(fields: [agentId], references: [id])
+  status      String    @default("idle")
+  output      String?   @db.Text
+  tokensUsed  Int       @default(0)
+  startedAt   DateTime?
+  completedAt DateTime?
+  positionX   Float     @default(0)
+  positionY   Float     @default(0)
+}
+
+model SwarmMessage {
+  id          String   @id @default(cuid())
+  swarmRunId  String
+  swarmRun    SwarmRun @relation(fields: [swarmRunId], references: [id])
+  fromAgent   String
+  toAgent     String
+  content     String   @db.Text
+  messageType String   @default("text")
+  createdAt   DateTime @default(now())
+}

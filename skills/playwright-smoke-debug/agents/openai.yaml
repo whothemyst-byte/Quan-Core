@@ -1,0 +1,3 @@
+display_name: Playwright Smoke Debug
+short_description: Create or debug fast smoke tests for real user flows.
+default_prompt: Plan or implement a minimal Playwright smoke layer for the affected routes, using resilient locators and production-like validation where it matters.

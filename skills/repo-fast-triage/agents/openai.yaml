@@ -1,0 +1,3 @@
+display_name: Repo Fast Triage
+short_description: Map a JS/TS repo quickly and choose the smallest safe validation loop.
+default_prompt: Triage this repository, identify the affected surfaces, and recommend the smallest reliable verification loop for the requested code change.

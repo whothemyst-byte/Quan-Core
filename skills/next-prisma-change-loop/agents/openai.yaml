@@ -1,0 +1,3 @@
+display_name: Next Prisma Change Loop
+short_description: Use a fast, safe workflow for Next.js App Router and Prisma changes.
+default_prompt: Apply the smallest reliable Next.js and Prisma validation loop for this change, including client regeneration or build verification when the touched files require it.
