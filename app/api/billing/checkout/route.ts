@@ -24,7 +24,12 @@ export async function POST(request: Request) {
   const provisionedUser = await ensureProvisionedUser(user);
   const selectedPlan = CASHFREE_PLANS[body.plan];
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+  const url = new URL(request.url);
+  const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
+  const fallbackUrl = forwardedHost ? `${forwardedProto}://${forwardedHost}` : url.origin;
+  const envAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl = envAppUrl && !/localhost|127\\.0\\.0\\.1/i.test(envAppUrl) ? envAppUrl : fallbackUrl;
   const linkId = `qc_${body.plan.toLowerCase()}_${Date.now()}`;
   const customerName = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "QuanCore User";
 
