@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
   const url = new URL(request.url);
   const redirectTo = url.searchParams.get("redirectTo") ?? "/dashboard";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? url.origin;
 
   if (!user) {
     return NextResponse.redirect(new URL(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, appUrl));
