@@ -2,6 +2,7 @@ import type { AgentRole } from "@/types/agent";
 import type { PlanLimits, PlanModelPolicy, SubscriptionPlan } from "@/types/subscription";
 
 const FREE_MODELS = ["openrouter/free"] as const;
+const FAST_FALLBACK_MODEL = "mistralai/mistral-7b-instruct:free";
 
 const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   FREE: {
@@ -55,6 +56,20 @@ export function getModelForAgent(plan: SubscriptionPlan, role: AgentRole): strin
   if (role === "CEO") return policy.ceo;
   if (role === "MANAGER") return policy.manager;
   return policy.specialist;
+}
+
+export function getFallbackModelForAgent(role: AgentRole): string {
+  if (role === "CEO" || role === "MANAGER") {
+    return FAST_FALLBACK_MODEL;
+  }
+
+  return FAST_FALLBACK_MODEL;
+}
+
+export function getMaxTokensForAgent(role: AgentRole): number {
+  if (role === "CEO") return 1200;
+  if (role === "MANAGER") return 1000;
+  return 700;
 }
 
 export function validateSwarmComposition(agentRoles: AgentRole[]): { ok: boolean; reason?: string } {

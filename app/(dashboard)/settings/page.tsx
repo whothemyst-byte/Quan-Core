@@ -1,20 +1,14 @@
 import Link from "next/link";
 import { Activity, Bot, CreditCard, ShieldCheck, Sparkles, CheckCircle2, XCircle } from "lucide-react";
 import { ensureProvisionedUser } from "@/lib/user/provision";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDashboardSnapshot } from "@/lib/data/app";
 import { getLaunchReadiness } from "@/lib/utils/launch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { requireCurrentUser } from "@/lib/auth/server";
 
 export default async function SettingsPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
+  const user = await requireCurrentUser({ redirectTo: "/login?redirectTo=/settings" });
   const appUser = await ensureProvisionedUser(user);
   const snapshot = await getDashboardSnapshot(appUser.id);
   const readiness = getLaunchReadiness(snapshot.subscription?.plan ?? "FREE", snapshot.agents);

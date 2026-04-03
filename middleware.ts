@@ -10,7 +10,7 @@ function normalizeSupabaseUrl(raw: string): string {
 }
 
 function isProtectedPath(pathname: string): boolean {
-  return ["/dashboard", "/agents", "/history", "/settings", "/swarm"].some((prefix) => pathname.startsWith(prefix));
+  return ["/dashboard", "/agents", "/history", "/settings", "/swarm", "/prompts"].some((prefix) => pathname.startsWith(prefix));
 }
 
 export async function middleware(request: NextRequest) {
@@ -56,5 +56,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/agents", "/history", "/settings", "/swarm/:path*"],
+  matcher: ["/dashboard/:path*", "/agents", "/history", "/settings", "/swarm/:path*", "/prompts", "/prompts/:path*"],
 };

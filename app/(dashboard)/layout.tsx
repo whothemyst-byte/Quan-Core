@@ -1,6 +1,9 @@
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { requireCurrentUser } from "@/lib/auth/server";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await requireCurrentUser({ redirectTo: "/login" });
+
   return (
     <div className="min-h-screen qc-bg" style={{ color: "var(--qc-text)" }}>
       <DashboardSidebar />
@@ -10,4 +13,3 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
-

@@ -2,6 +2,7 @@ import type { AgentRole } from "@/types/agent";
 import { callOpenRouter } from "@/lib/openrouter/client";
 import { buildSystemPrompt, buildTaskPrompt } from "@/lib/orchestrator/PromptBuilder";
 import type { OpenRouterError, OpenRouterMessage } from "@/lib/openrouter/client";
+import { getFallbackModelForAgent, getMaxTokensForAgent } from "@/lib/utils/subscription";
 
 export interface AgentRunRequest {
   role: AgentRole;
@@ -29,30 +30,57 @@ export class AgentRunner {
 
     let response;
     try {
-      response = await callOpenRouter({
-        model: request.model,
-        messages: defaultMessages,
-        response_format: requiresJson ? { type: "json_object" } : undefined,
-      });
+      response = await this.runWithModel(request.model, defaultMessages, requiresJson, getMaxTokensForAgent(request.role));
     } catch (error) {
-      if (!shouldRetryWithCompatibilityMode(error)) {
+      if (shouldRetryWithCompatibilityMode(error)) {
+        try {
+          response = await this.runWithModel(
+            request.model,
+            [
+              {
+                role: "user",
+                content: buildCompatibilityPrompt(systemPrompt, prompt, requiresJson),
+              },
+            ],
+            false,
+            getMaxTokensForAgent(request.role),
+          );
+        } catch (compatibilityError) {
+          if (!shouldRetryWithFallbackModel(compatibilityError, request.role, request.model)) {
+            throw compatibilityError;
+          }
+
+          response = await this.runWithModel(
+            getFallbackModelForAgent(request.role),
+            defaultMessages,
+            requiresJson,
+            getMaxTokensForAgent(request.role),
+          );
+        }
+      } else if (shouldRetryWithFallbackModel(error, request.role, request.model)) {
+        response = await this.runWithModel(
+          getFallbackModelForAgent(request.role),
+          defaultMessages,
+          requiresJson,
+          getMaxTokensForAgent(request.role),
+        );
+      } else {
         throw error;
       }
-
-      response = await callOpenRouter({
-        model: request.model,
-        messages: [
-          {
-            role: "user",
-            content: buildCompatibilityPrompt(systemPrompt, prompt, requiresJson),
-          },
-        ],
-      });
     }
 
     const output = response.choices[0]?.message.content ?? "";
     const tokensUsed = response.usage?.total_tokens ?? 0;
     return { output, tokensUsed };
+  }
+
+  private async runWithModel(model: string, messages: OpenRouterMessage[], requiresJson: boolean, maxTokens: number) {
+    return callOpenRouter({
+      model,
+      messages,
+      response_format: requiresJson ? { type: "json_object" } : undefined,
+      max_tokens: maxTokens,
+    });
   }
 }
 
@@ -73,6 +101,27 @@ function shouldRetryWithCompatibilityMode(error: unknown): error is OpenRouterEr
     raw.includes("json_object") ||
     raw.includes("provider returned error")
   );
+}
+
+function shouldRetryWithFallbackModel(error: unknown, role: AgentRole, currentModel: string) {
+  if (role === "CEO" || role === "MANAGER") {
+    return false;
+  }
+
+  if (!error || typeof error !== "object" || !("status" in error)) {
+    return false;
+  }
+
+  const openRouterError = error as OpenRouterError;
+  const raw = typeof openRouterError.raw === "string" ? openRouterError.raw.toLowerCase() : "";
+  const isTransientFailure =
+    openRouterError.status === 408 ||
+    openRouterError.status === 429 ||
+    openRouterError.status >= 500 ||
+    raw.includes("timeout") ||
+    raw.includes("aborted");
+
+  return isTransientFailure && currentModel !== getFallbackModelForAgent(role);
 }
 
 function buildCompatibilityPrompt(systemPrompt: string, taskPrompt: string, requiresJson: boolean) {

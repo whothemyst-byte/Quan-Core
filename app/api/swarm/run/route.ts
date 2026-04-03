@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getModelForAgent, getPlanLimits, validateSwarmComposition } from "@/lib/utils/subscription";
+import { getLaunchReadiness } from "@/lib/utils/launch";
 import { ensureProvisionedUser } from "@/lib/user/provision";
 import { countSwarmRunsSince, createSwarmRun, getSubscriptionForUser, listAgentsForUser } from "@/lib/data/app";
 import type { SubscriptionPlan } from "@/types/subscription";
@@ -36,6 +37,10 @@ export async function POST(request: Request) {
   ]);
 
   const plan = (subscription?.plan ?? "FREE") as SubscriptionPlan;
+  const readiness = getLaunchReadiness(plan, allAgents);
+  if (readiness.disableLaunch) {
+    return new Response(JSON.stringify({ error: readiness.message }), { status: 403 });
+  }
   const limits = getPlanLimits(plan);
 
   if (plan === "FREE" && limits.dailyRunLimit !== null) {
@@ -70,7 +75,35 @@ export async function POST(request: Request) {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const encoder = new TextEncoder();
-      controller.enqueue(encoder.encode(sse({ type: "SWARM_STARTED", data: { swarmRunId: swarmRun.id } })));
+      let streamClosed = false;
+
+      function enqueue(payload: string) {
+        if (streamClosed) {
+          return;
+        }
+
+        try {
+          controller.enqueue(encoder.encode(payload));
+        } catch (error) {
+          streamClosed = true;
+          console.warn("Swarm SSE stream enqueue failed", error);
+        }
+      }
+
+      function closeStream() {
+        if (streamClosed) {
+          return;
+        }
+
+        streamClosed = true;
+        try {
+          controller.close();
+        } catch (error) {
+          console.warn("Swarm SSE stream close ignored", error);
+        }
+      }
+
+      enqueue(sse({ type: "SWARM_STARTED", data: { swarmRunId: swarmRun.id } }));
 
       const orchestrator = new SwarmOrchestrator();
       void orchestrator
@@ -85,22 +118,23 @@ export async function POST(request: Request) {
             systemPrompt: agent.systemPrompt,
           })),
           onEvent: (event: { type: string; data: Record<string, unknown>; agentRole?: string }) => {
-            controller.enqueue(encoder.encode(sse(event)));
+            enqueue(sse(event));
           },
         })
         .catch((error: unknown) => {
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "ERROR",
-                data: { message: error instanceof Error ? error.message : "Orchestration failed" },
-              }),
-            ),
+          enqueue(
+            sse({
+              type: "ERROR",
+              data: { message: error instanceof Error ? error.message : "Orchestration failed" },
+            }),
           );
         })
         .finally(() => {
-          controller.close();
+          closeStream();
         });
+    },
+    cancel() {
+      // If the client disconnects, ignore any later orchestrator callbacks.
     },
   });
 

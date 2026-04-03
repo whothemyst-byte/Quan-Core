@@ -30,6 +30,7 @@ export type OpenRouterPayload = {
   model: string;
   messages: OpenRouterMessage[];
   temperature?: number;
+  max_tokens?: number;
   stream?: boolean;
   response_format?: { type: "json_object" };
 };
@@ -41,11 +42,31 @@ export interface OpenRouterError {
 }
 
 const baseUrl = "https://openrouter.ai/api/v1";
-const REQUEST_TIMEOUT_MS = 20000;
+
+function getRequestTimeoutMs(): number {
+  const raw = process.env.OPENROUTER_REQUEST_TIMEOUT_MS?.trim();
+  if (!raw) {
+    return 60000;
+  }
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60000;
+}
+
+const REQUEST_TIMEOUT_MS = getRequestTimeoutMs();
+
+function getOpenRouterApiKey(): string {
+  const key = process.env.OPENROUTER_API_KEY?.trim() ?? "";
+  if (!key || key.startsWith("your_")) {
+    throw new Error("OPENROUTER_API_KEY is missing. Set the real OpenRouter API key in your environment.");
+  }
+
+  return key;
+}
 
 function buildHeaders(): HeadersInit {
   return {
-    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY ?? ""}`,
+    Authorization: `Bearer ${getOpenRouterApiKey()}`,
     "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
     "X-Title": "QuanCore",
     "Content-Type": "application/json",
